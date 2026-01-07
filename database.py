@@ -60,3 +60,14 @@ def buscar_vendas_por_texto(texto: str, limit: int = 20):
         f"Data: {d} | Série: {s} | Doc: {n} | Obs: {o}"
         for d, s, n, o in rows
     )
+import pandas as pd
+
+
+def carregar_planilha() -> pd.DataFrame:
+    """
+    Retorna todos os dados da tabela vendas como DataFrame.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT * FROM vendas", conn)
+    conn.close()
+    return df
