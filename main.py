@@ -6,7 +6,17 @@ from agent import agente
 from database import criar_banco
 from import_google_sheets import importar_google_sheets
 
-app = FastAPI(title="Agente de Vendas API")
+app = FastAPI(
+    title="Agente de Vendas API",
+    version="1.0.0",
+    servers=[
+        {
+            "url": "https://agente-de-vendas-api.onrender.com",
+            "description": "Produção (Render)"
+        }
+    ]
+)
+
 logger = get_logger("api")
 
 
@@ -27,16 +37,33 @@ def sync_google_sheets(_: None = Depends(verificar_api_key)):
 
     try:
         importar_google_sheets()
+        logger.info("Sincronização concluída com sucesso")
         return {
             "status": "ok",
             "message": "Google Sheets sincronizado com sucesso"
         }
-    except Exception:
+    except Exception as e:
         logger.exception("Erro ao sincronizar Google Sheets")
-        raise HTTPException(status_code=500, detail="Erro ao sincronizar")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 @app.post("/pergunta", response_model=RespostaOut)
-def perguntar(payload: PerguntaIn, _: None = Depends(verificar_api_key)):
-    resposta = agente(payload.pergunta)
-    return {"resposta": resposta}
+def perguntar(
+    payload: PerguntaIn,
+    _: None = Depends(verificar_api_key)
+):
+    logger.info("Rota /pergunta chamada")
+
+    try:
+        resposta = agente(payload.pergunta)
+        return {"resposta": resposta}
+
+    except Exception as e:
+        logger.exception("Erro na rota /pergunta")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
