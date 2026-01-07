@@ -1,3 +1,4 @@
+# security.py
 from fastapi import Header, HTTPException
 from config import API_KEY_INTERNA
 from rate_limiter import rate_limit
@@ -10,24 +11,19 @@ def verificar_api_key(authorization: str = Header(None)):
             detail="API_KEY_INTERNA não configurada"
         )
 
-    if not authorization:
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
-            status_code=401,
-            detail="Header Authorization ausente"
+            status_code=403,
+            detail="Token de autenticação ausente"
         )
 
-    try:
-        scheme, token = authorization.split()
-    except ValueError:
-        raise HTTPException(
-            status_code=401,
-            detail="Formato inválido do Authorization"
-        )
+    token = authorization.replace("Bearer ", "").strip()
 
-    if scheme.lower() != "bearer" or token != API_KEY_INTERNA:
+    if token != API_KEY_INTERNA:
         raise HTTPException(
             status_code=403,
             detail="API Key inválida"
         )
 
+    # opcional: rate limit
     rate_limit(token)
