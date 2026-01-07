@@ -1,25 +1,35 @@
 from openai import OpenAI
-from config import OPENAI_API_KEY
-from database import buscar_vendas
-from logging_config import get_logger
+from .config import OPENAI_API_KEY
+from .database import buscar_vendas_por_texto
+from .logging_config import get_logger
 
 logger = get_logger("agent")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+
 def agente(pergunta_cliente: str) -> str:
     logger.info(f"Pergunta recebida: {pergunta_cliente}")
 
-    dados = buscar_vendas()
+    # 🔍 Busca filtrada baseada na pergunta
+    dados = buscar_vendas_por_texto(pergunta_cliente)
+
+    if not dados:
+        dados = "Nenhum dado relevante encontrado no banco."
 
     prompt = f"""
 Você é um agente de atendimento da empresa.
-Use APENAS os dados abaixo para responder.
 
-Dados:
+REGRAS:
+- Responda SOMENTE com base nos dados fornecidos
+- Se não houver dados, diga claramente que não encontrou informação
+- NÃO invente valores
+- NÃO faça suposições
+
+DADOS:
 {dados}
 
-Pergunta:
+PERGUNTA:
 {pergunta_cliente}
 """.strip()
 
