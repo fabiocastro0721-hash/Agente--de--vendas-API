@@ -1,7 +1,7 @@
 from openai import OpenAI
-from .config import OPENAI_API_KEY
-from .database import buscar_vendas_por_texto
-from .logging_config import get_logger
+from config import OPENAI_API_KEY
+from database import buscar_vendas_por_texto
+from logging_config import get_logger
 
 logger = get_logger("agent")
 
