@@ -1,3 +1,5 @@
+raise RuntimeError("🚨 RENDER ESTÁ RODANDO ESTE MAIN.PY 🚨")
+
 # main.py
 from fastapi import FastAPI, Depends, HTTPException
 from logging_config import get_logger
