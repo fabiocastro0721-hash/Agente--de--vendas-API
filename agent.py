@@ -5,26 +5,19 @@ from logging_config import get_logger
 
 logger = get_logger("agent")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-
 def agente(pergunta_cliente: str) -> str:
-    logger.info(f"Pergunta recebida: {pergunta_cliente}")
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY não configurada no ambiente")
 
-    # 🔍 Busca filtrada baseada na pergunta
+    client = OpenAI(api_key=OPENAI_API_KEY)
+
     dados = buscar_vendas_por_texto(pergunta_cliente)
-
     if not dados:
-        dados = "Nenhum dado relevante encontrado no banco."
+        dados = "Nenhum dado relevante encontrado."
 
     prompt = f"""
-Você é um agente de atendimento da empresa.
-
-REGRAS:
-- Responda SOMENTE com base nos dados fornecidos
-- Se não houver dados, diga claramente que não encontrou informação
-- NÃO invente valores
-- NÃO faça suposições
+Você é um agente de atendimento.
+Use apenas os dados abaixo.
 
 DADOS:
 {dados}
@@ -38,7 +31,4 @@ PERGUNTA:
         input=prompt
     )
 
-    resposta = response.output[0].content[0].text
-    logger.info("Resposta gerada com sucesso")
-
-    return resposta
+    return response.output[0].content[0].text
