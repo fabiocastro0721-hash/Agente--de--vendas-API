@@ -3,30 +3,31 @@ from config import API_KEY_INTERNA
 from rate_limiter import rate_limit
 
 
-def verificar_api_key(x_api_key: str | None = Header(default=None)):
-    # 1️⃣ Verifica se a variável de ambiente existe
+def verificar_api_key(authorization: str = Header(None)):
     if not API_KEY_INTERNA:
         raise HTTPException(
             status_code=500,
             detail="API_KEY_INTERNA não configurada"
         )
 
-    # 2️⃣ Verifica se o header foi enviado
-    if not x_api_key:
+    if not authorization:
         raise HTTPException(
             status_code=401,
-            detail="Header x-api-key não informado"
+            detail="Header Authorization ausente"
         )
 
-    # 3️⃣ Compara a chave enviada com a chave interna
-    if x_api_key != API_KEY_INTERNA:
+    try:
+        scheme, token = authorization.split()
+    except ValueError:
+        raise HTTPException(
+            status_code=401,
+            detail="Formato inválido do Authorization"
+        )
+
+    if scheme.lower() != "bearer" or token != API_KEY_INTERNA:
         raise HTTPException(
             status_code=403,
             detail="API Key inválida"
         )
 
-    # 4️⃣ Rate limit (opcional, mas recomendado)
-    rate_limit(x_api_key)
-
-    # Se passou por tudo, está autorizado
-    return True
+    rate_limit(token)
