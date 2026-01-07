@@ -6,6 +6,7 @@ from schemas import PerguntaIn, RespostaOut
 from security import verificar_api_key
 from agent import agente
 from database import criar_banco, inserir_dados_teste
+from import_google_sheets import importar_google_sheets
 
 app = FastAPI(title="Agente de Vendas API")
 logger = get_logger("api")
@@ -16,9 +17,30 @@ def startup_event():
     criar_banco()
     inserir_dados_teste()
 
+
 @app.get("/")
 def health_check():
     return {"status": "ok"}
+
+
+# ✅ ROTA SYNC (ESTAVA FALTANDO)
+@app.post("/sync")
+def sync_google_sheets(_: None = Depends(verificar_api_key)):
+    logger.info("Iniciando sincronização com Google Sheets")
+
+    try:
+        importar_google_sheets()
+        return {
+            "status": "ok",
+            "message": "Google Sheets sincronizado com sucesso"
+        }
+    except Exception:
+        logger.exception("Erro ao sincronizar Google Sheets")
+        raise HTTPException(
+            status_code=500,
+            detail="Erro ao sincronizar Google Sheets"
+        )
+
 
 @app.post("/pergunta", response_model=RespostaOut)
 def perguntar(
@@ -29,10 +51,10 @@ def perguntar(
 
     try:
         resposta = agente(payload.pergunta)
-        logger.info("Rota /pergunta finalizada com sucesso")
         return {"resposta": resposta}
 
-    except Exception as e:
+    except Exception:
         logger.exception("Erro na rota /pergunta")
         raise HTTPException(status_code=500, detail="Erro interno")
+
 
