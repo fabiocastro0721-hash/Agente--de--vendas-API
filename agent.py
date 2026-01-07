@@ -1,34 +1,42 @@
-from openai import OpenAI
+# agent.py
 from config import OPENAI_API_KEY
+from fastapi import HTTPException
 from database import buscar_vendas_por_texto
-from logging_config import get_logger
 
-logger = get_logger("agent")
+# Se quiser usar OpenAI futuramente:
+# from openai import OpenAI
+# client = OpenAI(api_key=OPENAI_API_KEY)
 
-def agente(pergunta_cliente: str) -> str:
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY não configurada no ambiente")
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+def agente(pergunta: str) -> str:
+    """
+    Processa perguntas relacionadas à planilha.
+    """
 
-    dados = buscar_vendas_por_texto(pergunta_cliente)
-    if not dados:
-        dados = "Nenhum dado relevante encontrado."
+    pergunta_lower = pergunta.lower()
 
-    prompt = f"""
-Você é um agente de atendimento.
-Use apenas os dados abaixo.
+    # 👉 EXEMPLO: pergunta sobre nota cancelada
+    if "cancelad" in pergunta_lower:
+        resultados = buscar_vendas_por_texto("cancel")
 
-DADOS:
-{dados}
+        if not resultados:
+            return "Não encontrei nenhuma nota fiscal cancelada na planilha."
 
-PERGUNTA:
-{pergunta_cliente}
-""".strip()
+        return (
+            f"Encontrei {len(resultados)} nota(s) fiscal(is) cancelada(s) "
+            "na planilha."
+        )
 
-    response = client.responses.create(
-        model="gpt-4o-mini",
-        input=prompt
-    )
+    # 👉 Se quiser usar OpenAI (opcional)
+    if "resuma" in pergunta_lower or "explique" in pergunta_lower:
+        if not OPENAI_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="OPENAI_API_KEY não configurada"
+            )
 
-    return response.output[0].content[0].text
+        # Aqui você chamaria OpenAI futuramente
+        return "Função de IA ainda não implementada."
+
+    # fallback
+    return "Não consegui entender a pergunta com base nos dados da planilha."
