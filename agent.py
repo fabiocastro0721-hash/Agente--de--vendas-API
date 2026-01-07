@@ -1,42 +1,75 @@
-# agent.py
-from config import OPENAI_API_KEY
-from fastapi import HTTPException
-from database import buscar_vendas_por_texto
+from typing import List
+from database import buscar_vendas_por_texto, carregar_planilha
+import pandas as pd
 
-# Se quiser usar OpenAI futuramente:
-# from openai import OpenAI
-# client = OpenAI(api_key=OPENAI_API_KEY)
 
+def detectar_intencoes(pergunta: str) -> List[str]:
+    p = pergunta.lower()
+    intencoes = []
+
+    if "cancelad" in p:
+        intencoes.append("notas_canceladas")
+
+    if "vencimento" in p and ("antig" in p or "mais antiga" in p):
+        intencoes.append("vencimento_mais_antigo")
+
+    if "quantas" in p or "total" in p:
+        intencoes.append("total_lancamentos")
+
+    return intencoes
+def consultar_notas_canceladas():
+    resultados = buscar_vendas_por_texto("cancel")
+    return len(resultados)
+
+
+def consultar_vencimento_mais_antigo(df):
+    df["Data de vencimento"] = pd.to_datetime(
+        df["Data de vencimento"], errors="coerce"
+    )
+    data = df["Data de vencimento"].min()
+    return None if pd.isna(data) else data.date()
+
+
+def consultar_total_lancamentos(df):
+    return len(df)
 
 def agente(pergunta: str) -> str:
-    """
-    Processa perguntas relacionadas à planilha.
-    """
+    intencoes = detectar_intencoes(pergunta)
 
-    pergunta_lower = pergunta.lower()
-
-    # 👉 EXEMPLO: pergunta sobre nota cancelada
-    if "cancelad" in pergunta_lower:
-        resultados = buscar_vendas_por_texto("cancel")
-
-        if not resultados:
-            return "Não encontrei nenhuma nota fiscal cancelada na planilha."
-
+    if not intencoes:
         return (
-            f"Encontrei {len(resultados)} nota(s) fiscal(is) cancelada(s) "
-            "na planilha."
+            "Não consegui identificar o que você deseja consultar na planilha. "
+            "Você pode perguntar, por exemplo:\n"
+            "- Existe nota fiscal cancelada?\n"
+            "- Qual a data de vencimento mais antiga?\n"
+            "- Quantos lançamentos existem?"
         )
 
-    # 👉 Se quiser usar OpenAI (opcional)
-    if "resuma" in pergunta_lower or "explique" in pergunta_lower:
-        if not OPENAI_API_KEY:
-            raise HTTPException(
-                status_code=500,
-                detail="OPENAI_API_KEY não configurada"
+    respostas = []
+    df = carregar_planilha()
+
+    for intencao in intencoes:
+
+        if intencao == "notas_canceladas":
+            total = consultar_notas_canceladas()
+            if total == 0:
+                respostas.append("❌ Não há notas fiscais canceladas.")
+            else:
+                respostas.append(
+                    f"⚠️ Existem {total} notas fiscais canceladas."
+                )
+
+        elif intencao == "vencimento_mais_antigo":
+            data = consultar_vencimento_mais_antigo(df)
+            if data:
+                respostas.append(
+                    f"📅 A data de vencimento mais antiga é {data}."
+                )
+
+        elif intencao == "total_lancamentos":
+            total = consultar_total_lancamentos(df)
+            respostas.append(
+                f"📊 A planilha possui {total} lançamentos."
             )
 
-        # Aqui você chamaria OpenAI futuramente
-        return "Função de IA ainda não implementada."
-
-    # fallback
-    return "Não consegui entender a pergunta com base nos dados da planilha."
+    return "\n".join(respostas)
